@@ -43,7 +43,7 @@ Add to your MCP client configuration (e.g., Claude Desktop, Cursor, VS Code Copi
   "mcpServers": {
     "gemini-image": {
       "command": "node",
-      "args": ["/absolute/path/to/gemini-image-mcp-server/dist/index.js"],
+      "args": ["/absolute/path/to/image-mcp/dist/index.js"],
       "env": {
         "API_KEY": "your-gemini-api-key-here",
         "IMAGE_MODEL": "gemini-3.1-flash-image-preview"

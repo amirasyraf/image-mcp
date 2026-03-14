@@ -63,7 +63,7 @@ async function main(): Promise<void> {
 
   // Create MCP server
   const server = new McpServer({
-    name: "gemini-image-mcp-server",
+    name: "image-mcp",
     version: "1.0.0",
   });
 
