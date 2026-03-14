@@ -1,0 +1,29 @@
+{
+  "name": "gemini-image-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for AI-powered image generation and editing using Google Gemini API. Designed for frontend development workflows.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "gemini-image-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
