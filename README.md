@@ -28,8 +28,8 @@ Get your free API key from [Google AI Studio](https://aistudio.google.com/apikey
 ### 2. Install
 
 ```bash
-git clone https://github.com/amirasyraf/gemini-image-mcp-server.git
-cd gemini-image-mcp-server
+git clone git@github.com:amirasyraf/image-mcp.git
+cd image-mcp
 npm install
 npm run build
 ```
