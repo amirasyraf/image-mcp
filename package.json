@@ -19,10 +19,12 @@
   "dependencies": {
     "@google/genai": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "sharp": "^0.34.5",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/sharp": "^0.31.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

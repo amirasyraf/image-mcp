@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod";
-import { ASPECT_RATIOS, THINKING_LEVELS, MAX_REFERENCE_IMAGES } from "../constants.js";
+import { ASPECT_RATIOS, THINKING_LEVELS, MAX_REFERENCE_IMAGES, FIT_MODES, GRAVITY_OPTIONS, LOCAL_OUTPUT_FORMATS } from "../constants.js";
 
 /**
  * Schema for gemini_generate_image tool.
@@ -165,3 +165,170 @@ export const EndSessionSchema = z.object({
 }).strict();
 
 export type EndSessionInput = z.infer<typeof EndSessionSchema>;
+
+// --- Local image manipulation schemas ---
+
+const localInputPathField = z
+  .string()
+  .min(1, "Input path cannot be empty")
+  .describe(
+    "File path to the source image. Supports PNG, JPG, JPEG, WebP, GIF, TIFF, AVIF. " +
+    "Example: './src/assets/photo.png'"
+  );
+
+const localOutputPathField = z
+  .string()
+  .min(1, "Output path cannot be empty")
+  .describe(
+    "File path where the processed image will be saved. Output format is determined by file extension. " +
+    `Supported: ${Object.keys(LOCAL_OUTPUT_FORMATS).join(", ")}. ` +
+    "Parent directories will be created automatically. Example: './public/images/photo-resized.png'"
+  );
+
+/**
+ * Schema for image_resize tool.
+ */
+export const ResizeImageSchema = z.object({
+  input_path: localInputPathField,
+  output_path: localOutputPathField,
+  width: z
+    .number()
+    .int()
+    .positive("Width must be a positive integer")
+    .optional()
+    .describe(
+      "Target width in pixels. If only width is provided, height is calculated to maintain aspect ratio. " +
+      "Example: 800"
+    ),
+  height: z
+    .number()
+    .int()
+    .positive("Height must be a positive integer")
+    .optional()
+    .describe(
+      "Target height in pixels. If only height is provided, width is calculated to maintain aspect ratio. " +
+      "Example: 600"
+    ),
+  fit: z
+    .enum(FIT_MODES)
+    .default("cover")
+    .describe(
+      "How the image should fit the target dimensions when both width and height are provided. " +
+      "'cover' (default): Crop to fill the exact dimensions. " +
+      "'contain': Fit within dimensions, preserving aspect ratio (may add padding). " +
+      "'fill': Stretch to fill exact dimensions (may distort). " +
+      "'inside': Resize to fit inside dimensions, never enlarging. " +
+      "'outside': Resize to cover dimensions, never shrinking."
+    ),
+  position: z
+    .enum(GRAVITY_OPTIONS)
+    .default("center")
+    .describe(
+      "Crop position when using 'cover' fit. Controls which part of the image is kept. " +
+      "'center' (default), 'north', 'south', 'east', 'west', and corner variants. " +
+      "'entropy': Focus on the region with highest Shannon entropy. " +
+      "'attention': Focus on the region with the most interesting features."
+    ),
+  background: z
+    .string()
+    .default("#000000")
+    .describe(
+      "Background color for 'contain' fit padding. Hex color string. Default: '#000000' (black). " +
+      "Example: '#ffffff' for white, '#00000000' for transparent (PNG/WebP only)."
+    ),
+}).strict().refine(
+  (data) => data.width !== undefined || data.height !== undefined,
+  { message: "At least one of 'width' or 'height' must be provided" }
+);
+
+export type ResizeImageInput = z.infer<typeof ResizeImageSchema>;
+
+/**
+ * Schema for image_rotate tool.
+ */
+export const RotateImageSchema = z.object({
+  input_path: localInputPathField,
+  output_path: localOutputPathField,
+  angle: z
+    .number()
+    .default(0)
+    .describe(
+      "Rotation angle in degrees (clockwise). Can be any value — common values: 90, 180, 270. " +
+      "Non-right-angle rotations will enlarge the canvas to contain the rotated image. Default: 0"
+    ),
+  flip: z
+    .boolean()
+    .default(false)
+    .describe("Flip the image vertically (mirror over x-axis). Default: false"),
+  flop: z
+    .boolean()
+    .default(false)
+    .describe("Flop the image horizontally (mirror over y-axis). Default: false"),
+  background: z
+    .string()
+    .default("#000000")
+    .describe(
+      "Background color for areas exposed by non-right-angle rotation. Hex color string. " +
+      "Default: '#000000'. Use '#00000000' for transparent (PNG/WebP only)."
+    ),
+}).strict().refine(
+  (data) => data.angle !== 0 || data.flip || data.flop,
+  { message: "At least one of 'angle' (non-zero), 'flip', or 'flop' must be specified" }
+);
+
+export type RotateImageInput = z.infer<typeof RotateImageSchema>;
+
+/**
+ * Schema for image_compress tool.
+ */
+export const CompressImageSchema = z.object({
+  input_path: localInputPathField,
+  output_path: localOutputPathField,
+  quality: z
+    .number()
+    .int()
+    .min(1, "Quality must be between 1 and 100")
+    .max(100, "Quality must be between 1 and 100")
+    .default(80)
+    .describe(
+      "Output quality from 1 (smallest file, lowest quality) to 100 (largest file, highest quality). " +
+      "Default: 80. For JPEG, 60-80 is usually a good balance. For WebP, 75-85 works well. " +
+      "For PNG, this controls zlib compression level (lower = smaller file, no quality loss)."
+    ),
+  progressive: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Enable progressive/interlaced output. For JPEG: progressive scan. For PNG: interlaced. " +
+      "Progressive images render gradually (good for web). Default: false"
+    ),
+  mozjpeg: z
+    .boolean()
+    .default(false)
+    .describe(
+      "Use mozjpeg for JPEG output for potentially smaller files at the same quality. " +
+      "Slightly slower encoding. Only applies when output is JPEG. Default: false"
+    ),
+}).strict();
+
+export type CompressImageInput = z.infer<typeof CompressImageSchema>;
+
+/**
+ * Schema for image_convert tool.
+ */
+export const ConvertImageSchema = z.object({
+  input_path: localInputPathField,
+  output_path: localOutputPathField,
+  quality: z
+    .number()
+    .int()
+    .min(1, "Quality must be between 1 and 100")
+    .max(100, "Quality must be between 1 and 100")
+    .default(90)
+    .describe(
+      "Output quality for lossy formats (JPEG, WebP, AVIF). 1-100. Default: 90. " +
+      "Ignored for lossless formats (PNG, GIF, TIFF)."
+    ),
+}).strict();
+
+export type ConvertImageInput = z.infer<typeof ConvertImageSchema>;

@@ -57,3 +57,17 @@ export interface GeminiResponsePart {
     data: string;
   };
 }
+
+/** Result from a local image manipulation operation */
+export interface LocalImageResult {
+  /** File path where the image was saved */
+  outputPath: string;
+  /** MIME type of the saved image */
+  mimeType: string;
+  /** File size in bytes */
+  fileSizeBytes: number;
+  /** Image width in pixels */
+  width: number;
+  /** Image height in pixels */
+  height: number;
+}

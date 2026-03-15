@@ -14,15 +14,17 @@ This is an MCP (Model Context Protocol) server written in TypeScript that wraps 
 src/
 ├── index.ts              # Entry point — loads config, inits Gemini client, registers tools, starts stdio server
 ├── constants.ts          # All configuration constants, supported models, aspect ratios, env var names
-├── types.ts              # TypeScript interfaces (ServerConfig, ImageResult, EditSession, etc.)
+├── types.ts              # TypeScript interfaces (ServerConfig, ImageResult, EditSession, LocalImageResult, etc.)
 ├── services/
-│   └── gemini.ts         # Core Gemini API wrapper — all API calls go through here
+│   ├── gemini.ts         # Core Gemini API wrapper — all API calls go through here
+│   └── image.ts          # Local image processing with sharp (resize, rotate, compress, convert)
 ├── schemas/
 │   └── index.ts          # Zod validation schemas for all tool inputs
 └── tools/
     ├── generate.ts       # gemini_generate_image tool registration
     ├── edit.ts           # gemini_edit_image tool registration
-    └── session.ts        # Multi-turn session tools (start, send, list, end)
+    ├── session.ts        # Multi-turn session tools (start, send, list, end)
+    └── image.ts          # Local image manipulation tools (resize, rotate, compress, convert)
 ```
 
 ### Key Design Decisions
@@ -52,16 +54,20 @@ src/
 
 Config is loaded once at startup in `index.ts:loadConfig()`.
 
-## Tools (6 total)
+## Tools (10 total)
 
 | Tool | File | Purpose |
 |------|------|---------|
-| `gemini_generate_image` | `tools/generate.ts` | Text → Image |
-| `gemini_edit_image` | `tools/edit.ts` | Text + Image(s) → Image |
-| `gemini_start_edit_session` | `tools/session.ts` | Create multi-turn chat session |
-| `gemini_send_edit_message` | `tools/session.ts` | Send message to session |
+| `gemini_generate_image` | `tools/generate.ts` | Text → Image (API) |
+| `gemini_edit_image` | `tools/edit.ts` | Text + Image(s) → Image (API) |
+| `gemini_start_edit_session` | `tools/session.ts` | Create multi-turn chat session (API) |
+| `gemini_send_edit_message` | `tools/session.ts` | Send message to session (API) |
 | `gemini_list_sessions` | `tools/session.ts` | List active sessions |
 | `gemini_end_session` | `tools/session.ts` | End and clean up session |
+| `image_resize` | `tools/image.ts` | Resize/crop images (local) |
+| `image_rotate` | `tools/image.ts` | Rotate/flip images (local) |
+| `image_compress` | `tools/image.ts` | Compress/optimize images (local) |
+| `image_convert` | `tools/image.ts` | Convert image formats (local) |
 
 ## Build & Run
 
@@ -80,6 +86,7 @@ Build output goes to `dist/`. Entry point is `dist/index.js`.
 |---------|---------|
 | `@modelcontextprotocol/sdk` | MCP server framework (v1.x) |
 | `@google/genai` | Google Gemini API client |
+| `sharp` | Local image processing (resize, rotate, compress, convert) |
 | `zod` | Runtime input validation schemas |
 | `typescript` | Build toolchain (dev) |
 | `tsx` | TypeScript execution for dev mode (dev) |
@@ -137,3 +144,8 @@ To test:
 - **API errors**: Caught and returned as `isError: true` MCP responses with descriptive messages
 - **No image in response**: Error includes model's text response for diagnostics
 - **Invalid session ID**: Error suggests using `gemini_list_sessions`
+
+### Local Image Tools
+- **File not found**: Error includes resolved absolute path
+- **Unsupported format**: Error lists all supported extensions
+- **Invalid parameters**: Zod schema refinements catch missing width/height (resize) and no-op transforms (rotate)

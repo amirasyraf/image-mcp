@@ -13,6 +13,7 @@ import { initGeminiClient } from "./services/gemini.js";
 import { registerGenerateImageTool } from "./tools/generate.js";
 import { registerEditImageTool } from "./tools/edit.js";
 import { registerSessionTools } from "./tools/session.js";
+import { registerImageTools } from "./tools/image.js";
 import { ENV, DEFAULT_MODEL, SUPPORTED_MODELS, type SupportedModel } from "./constants.js";
 import type { ServerConfig } from "./types.js";
 
@@ -71,6 +72,7 @@ async function main(): Promise<void> {
   registerGenerateImageTool(server);
   registerEditImageTool(server);
   registerSessionTools(server);
+  registerImageTools(server);
 
   // Create stdio transport and connect
   const transport = new StdioServerTransport();

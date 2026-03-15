@@ -54,3 +54,45 @@ export const SUPPORTED_IMAGE_TYPES: Record<string, string> = {
   ".webp": "image/webp",
   ".gif": "image/gif",
 };
+
+// --- Local image manipulation constants ---
+
+// Fit modes for resizing (sharp's fit options)
+export const FIT_MODES = [
+  "cover",
+  "contain",
+  "fill",
+  "inside",
+  "outside",
+] as const;
+
+export type FitMode = (typeof FIT_MODES)[number];
+
+// Gravity/position options for cropping during resize
+export const GRAVITY_OPTIONS = [
+  "north",
+  "northeast",
+  "east",
+  "southeast",
+  "south",
+  "southwest",
+  "west",
+  "northwest",
+  "center",
+  "entropy",
+  "attention",
+] as const;
+
+export type GravityOption = (typeof GRAVITY_OPTIONS)[number];
+
+// Supported output formats for local image processing
+export const LOCAL_OUTPUT_FORMATS: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".tiff": "image/tiff",
+  ".tif": "image/tiff",
+  ".avif": "image/avif",
+};
