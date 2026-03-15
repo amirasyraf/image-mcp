@@ -21,6 +21,7 @@ import {
   compressImage,
   convertImage,
 } from "../services/image.js";
+import { logger, fmtError } from "../logger.js";
 
 export function registerImageTools(server: McpServer): void {
 
@@ -69,6 +70,14 @@ Error Handling:
       },
     },
     async (params: ResizeImageInput) => {
+      logger.info("tool: image_resize", {
+        inputPath: params.input_path,
+        outputPath: params.output_path,
+        width: params.width ?? null,
+        height: params.height ?? null,
+        fit: params.fit,
+        position: params.position,
+      });
       try {
         const result = await resizeImage({
           inputPath: params.input_path,
@@ -99,6 +108,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: image_resize failed", fmtError(error));
         return {
           content: [
             {
@@ -150,6 +160,13 @@ Error Handling:
       },
     },
     async (params: RotateImageInput) => {
+      logger.info("tool: image_rotate", {
+        inputPath: params.input_path,
+        outputPath: params.output_path,
+        angle: params.angle,
+        flip: params.flip,
+        flop: params.flop,
+      });
       try {
         const result = await rotateImage({
           inputPath: params.input_path,
@@ -179,6 +196,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: image_rotate failed", fmtError(error));
         return {
           content: [
             {
@@ -228,6 +246,13 @@ Error Handling:
       },
     },
     async (params: CompressImageInput) => {
+      logger.info("tool: image_compress", {
+        inputPath: params.input_path,
+        outputPath: params.output_path,
+        quality: params.quality,
+        progressive: params.progressive,
+        mozjpeg: params.mozjpeg,
+      });
       try {
         const result = await compressImage({
           inputPath: params.input_path,
@@ -267,6 +292,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: image_compress failed", fmtError(error));
         return {
           content: [
             {
@@ -316,6 +342,11 @@ Error Handling:
       },
     },
     async (params: ConvertImageInput) => {
+      logger.info("tool: image_convert", {
+        inputPath: params.input_path,
+        outputPath: params.output_path,
+        quality: params.quality,
+      });
       try {
         const result = await convertImage({
           inputPath: params.input_path,
@@ -343,6 +374,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: image_convert failed", fmtError(error));
         return {
           content: [
             {

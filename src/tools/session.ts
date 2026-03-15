@@ -17,6 +17,7 @@ import {
   listSessions,
   endSession,
 } from "../services/gemini.js";
+import { logger, fmtError } from "../logger.js";
 
 export function registerSessionTools(server: McpServer): void {
   // --- gemini_start_edit_session ---
@@ -64,6 +65,11 @@ Notes:
       },
     },
     async (params: StartEditSessionInput) => {
+      logger.info("tool: gemini_start_edit_session", {
+        description: params.description,
+        initialImagePath: params.initial_image_path ?? null,
+        thinkingLevel: params.thinking_level,
+      });
       try {
         const result = await startEditSession({
           description: params.description,
@@ -88,6 +94,7 @@ Notes:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: gemini_start_edit_session failed", fmtError(error));
         return {
           content: [
             {
@@ -136,6 +143,13 @@ Error Handling:
       },
     },
     async (params: SendEditMessageInput) => {
+      logger.info("tool: gemini_send_edit_message", {
+        sessionId: params.session_id,
+        promptLen: params.prompt.length,
+        hasImagePath: !!params.image_path,
+        imagePath: params.image_path ?? null,
+        outputPath: params.output_path,
+      });
       try {
         const result = await sendEditMessage({
           sessionId: params.session_id,
@@ -163,6 +177,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: gemini_send_edit_message failed", { ...fmtError(error), sessionId: params.session_id });
         return {
           content: [
             {
@@ -201,6 +216,7 @@ Notes:
     },
     async () => {
       const sessions = listSessions();
+      logger.info("tool: gemini_list_sessions", { count: sessions.length });
 
       if (sessions.length === 0) {
         return {
@@ -263,6 +279,7 @@ Notes:
       },
     },
     async (params: EndSessionInput) => {
+      logger.info("tool: gemini_end_session", { sessionId: params.session_id });
       const existed = endSession(params.session_id);
 
       if (!existed) {

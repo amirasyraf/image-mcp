@@ -5,6 +5,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GenerateImageSchema, type GenerateImageInput } from "../schemas/index.js";
 import { generateImage } from "../services/gemini.js";
+import { logger, fmtError } from "../logger.js";
 
 export function registerGenerateImageTool(server: McpServer): void {
   server.registerTool(
@@ -49,6 +50,12 @@ Error Handling:
       },
     },
     async (params: GenerateImageInput) => {
+      logger.info("tool: gemini_generate_image", {
+        outputPath: params.output_path,
+        aspectRatio: params.aspect_ratio,
+        thinkingLevel: params.thinking_level,
+        promptLen: params.prompt.length,
+      });
       try {
         const result = await generateImage({
           prompt: params.prompt,
@@ -75,6 +82,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: gemini_generate_image failed", fmtError(error));
         return {
           content: [
             {

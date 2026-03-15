@@ -5,6 +5,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { EditImageSchema, type EditImageInput } from "../schemas/index.js";
 import { editImage } from "../services/gemini.js";
+import { logger, fmtError } from "../logger.js";
 
 export function registerEditImageTool(server: McpServer): void {
   server.registerTool(
@@ -53,6 +54,14 @@ Error Handling:
       },
     },
     async (params: EditImageInput) => {
+      logger.info("tool: gemini_edit_image", {
+        imageCount: params.image_paths.length,
+        imagePaths: params.image_paths,
+        outputPath: params.output_path,
+        aspectRatio: params.aspect_ratio,
+        thinkingLevel: params.thinking_level,
+        promptLen: params.prompt.length,
+      });
       try {
         const result = await editImage({
           prompt: params.prompt,
@@ -81,6 +90,7 @@ Error Handling:
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        logger.error("tool: gemini_edit_image failed", fmtError(error));
         return {
           content: [
             {

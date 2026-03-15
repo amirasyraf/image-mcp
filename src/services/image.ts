@@ -10,6 +10,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { LOCAL_OUTPUT_FORMATS } from "../constants.js";
 import type { LocalImageResult } from "../types.js";
+import { logger, fmtError } from "../logger.js";
 
 /**
  * Parse a hex color string into an RGBA object for sharp.
@@ -101,20 +102,42 @@ export async function resizeImage(params: {
 }): Promise<LocalImageResult> {
   const input = validateInputPath(params.inputPath);
   const output = validateOutputPath(params.outputPath);
-
   const bg = parseHexColor(params.background);
 
-  await sharp(input)
-    .resize({
-      width: params.width,
-      height: params.height,
-      fit: params.fit as keyof sharp.FitEnum,
-      position: params.position,
-      background: bg,
-    })
-    .toFile(output);
+  logger.debug("resizeImage: processing", {
+    input,
+    output,
+    width: params.width ?? null,
+    height: params.height ?? null,
+    fit: params.fit,
+    position: params.position,
+  });
 
-  return buildResult(output);
+  const t0 = Date.now();
+  try {
+    await sharp(input)
+      .resize({
+        width: params.width,
+        height: params.height,
+        fit: params.fit as keyof sharp.FitEnum,
+        position: params.position,
+        background: bg,
+      })
+      .toFile(output);
+  } catch (err) {
+    logger.error("resizeImage: sharp processing failed", fmtError(err));
+    throw err;
+  }
+
+  const result = await buildResult(output);
+  logger.info("resizeImage: done", {
+    durationMs: Date.now() - t0,
+    output,
+    width: result.width,
+    height: result.height,
+    fileSizeBytes: result.fileSizeBytes,
+  });
+  return result;
 }
 
 /**
@@ -130,11 +153,17 @@ export async function rotateImage(params: {
 }): Promise<LocalImageResult> {
   const input = validateInputPath(params.inputPath);
   const output = validateOutputPath(params.outputPath);
-
   const bg = parseHexColor(params.background);
 
-  let pipeline = sharp(input);
+  logger.debug("rotateImage: processing", {
+    input,
+    output,
+    angle: params.angle,
+    flip: params.flip,
+    flop: params.flop,
+  });
 
+  let pipeline = sharp(input);
   if (params.angle !== 0) {
     pipeline = pipeline.rotate(params.angle, { background: bg });
   }
@@ -145,9 +174,23 @@ export async function rotateImage(params: {
     pipeline = pipeline.flop();
   }
 
-  await pipeline.toFile(output);
+  const t0 = Date.now();
+  try {
+    await pipeline.toFile(output);
+  } catch (err) {
+    logger.error("rotateImage: sharp processing failed", fmtError(err));
+    throw err;
+  }
 
-  return buildResult(output);
+  const result = await buildResult(output);
+  logger.info("rotateImage: done", {
+    durationMs: Date.now() - t0,
+    output,
+    width: result.width,
+    height: result.height,
+    fileSizeBytes: result.fileSizeBytes,
+  });
+  return result;
 }
 
 /**
@@ -165,6 +208,14 @@ export async function compressImage(params: {
 
   const originalStats = fs.statSync(input);
   const ext = path.extname(output).toLowerCase();
+
+  logger.debug("compressImage: processing", {
+    input,
+    output,
+    format: ext,
+    quality: params.quality,
+    originalFileSizeBytes: originalStats.size,
+  });
 
   let pipeline = sharp(input);
 
@@ -184,20 +235,14 @@ export async function compressImage(params: {
       });
       break;
     case ".webp":
-      pipeline = pipeline.webp({
-        quality: params.quality,
-      });
+      pipeline = pipeline.webp({ quality: params.quality });
       break;
     case ".avif":
-      pipeline = pipeline.avif({
-        quality: params.quality,
-      });
+      pipeline = pipeline.avif({ quality: params.quality });
       break;
     case ".tiff":
     case ".tif":
-      pipeline = pipeline.tiff({
-        quality: params.quality,
-      });
+      pipeline = pipeline.tiff({ quality: params.quality });
       break;
     case ".gif":
       pipeline = pipeline.gif();
@@ -206,9 +251,25 @@ export async function compressImage(params: {
       throw new Error(`Cannot set compression options for format: "${ext}"`);
   }
 
-  await pipeline.toFile(output);
+  const t0 = Date.now();
+  try {
+    await pipeline.toFile(output);
+  } catch (err) {
+    logger.error("compressImage: sharp processing failed", fmtError(err));
+    throw err;
+  }
 
   const result = await buildResult(output);
+  const savingsPercent = originalStats.size > 0
+    ? Math.round(((originalStats.size - result.fileSizeBytes) / originalStats.size) * 100)
+    : 0;
+  logger.info("compressImage: done", {
+    durationMs: Date.now() - t0,
+    output,
+    originalFileSizeBytes: originalStats.size,
+    fileSizeBytes: result.fileSizeBytes,
+    savingsPercent,
+  });
   return { ...result, originalFileSizeBytes: originalStats.size };
 }
 
@@ -226,9 +287,16 @@ export async function convertImage(params: {
   const inputExt = path.extname(input).toLowerCase();
   const outputExt = path.extname(output).toLowerCase();
 
+  logger.debug("convertImage: processing", {
+    input,
+    output,
+    fromFormat: inputExt,
+    toFormat: outputExt,
+    quality: params.quality,
+  });
+
   let pipeline = sharp(input);
 
-  // Apply format-specific quality settings for lossy formats
   switch (outputExt) {
     case ".jpg":
     case ".jpeg":
@@ -252,9 +320,21 @@ export async function convertImage(params: {
       break;
   }
 
-  await pipeline.toFile(output);
+  const t0 = Date.now();
+  try {
+    await pipeline.toFile(output);
+  } catch (err) {
+    logger.error("convertImage: sharp processing failed", fmtError(err));
+    throw err;
+  }
 
   const result = await buildResult(output);
+  logger.info("convertImage: done", {
+    durationMs: Date.now() - t0,
+    fromFormat: inputExt,
+    toFormat: outputExt,
+    fileSizeBytes: result.fileSizeBytes,
+  });
   return {
     ...result,
     originalFormat: LOCAL_OUTPUT_FORMATS[inputExt] || `unknown (${inputExt})`,

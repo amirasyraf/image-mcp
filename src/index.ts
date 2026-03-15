@@ -16,6 +16,7 @@ import { registerSessionTools } from "./tools/session.js";
 import { registerImageTools } from "./tools/image.js";
 import { ENV, DEFAULT_MODEL, SUPPORTED_MODELS, type SupportedModel } from "./constants.js";
 import type { ServerConfig } from "./types.js";
+import { logger, fmtError } from "./logger.js";
 
 /**
  * Load and validate configuration from environment variables.
@@ -23,10 +24,9 @@ import type { ServerConfig } from "./types.js";
 function loadConfig(): ServerConfig {
   const apiKey = process.env[ENV.API_KEY];
   if (!apiKey) {
-    console.error(
-      `ERROR: ${ENV.API_KEY} environment variable is required.\n` +
-      `Get your API key from https://aistudio.google.com/apikey\n` +
-      `Set it in your MCP client config under "env".`
+    logger.error(
+      `${ENV.API_KEY} environment variable is required. ` +
+      `Get your API key from https://aistudio.google.com/apikey and set it in your MCP client config.`
     );
     process.exit(1);
   }
@@ -35,12 +35,10 @@ function loadConfig(): ServerConfig {
   let model: SupportedModel = DEFAULT_MODEL;
   if (modelEnv) {
     if (!SUPPORTED_MODELS.includes(modelEnv as SupportedModel)) {
-      console.error(
-        `WARNING: IMAGE_MODEL="${modelEnv}" is not a known model. ` +
-        `Supported models: ${SUPPORTED_MODELS.join(", ")}. ` +
-        `Proceeding with the provided value anyway.`
-      );
-      // Allow unknown models for forward compatibility
+      logger.warn("Unknown IMAGE_MODEL — proceeding anyway (forward compatibility)", {
+        model: modelEnv,
+        knownModels: SUPPORTED_MODELS,
+      });
       model = modelEnv as SupportedModel;
     } else {
       model = modelEnv as SupportedModel;
@@ -48,6 +46,12 @@ function loadConfig(): ServerConfig {
   }
 
   const apiBaseUrl = process.env[ENV.API_BASE_URL] || undefined;
+
+  logger.info("Config loaded", {
+    model,
+    apiBaseUrl: apiBaseUrl ?? null,
+    apiKeyPrefix: apiKey.slice(0, 6) + "…",
+  });
 
   return { apiKey, model, apiBaseUrl };
 }
@@ -74,15 +78,30 @@ async function main(): Promise<void> {
   registerSessionTools(server);
   registerImageTools(server);
 
+  logger.info("Tools registered", {
+    tools: [
+      "gemini_generate_image",
+      "gemini_edit_image",
+      "gemini_start_edit_session",
+      "gemini_send_edit_message",
+      "gemini_list_sessions",
+      "gemini_end_session",
+      "image_resize",
+      "image_rotate",
+      "image_compress",
+      "image_convert",
+    ],
+  });
+
   // Create stdio transport and connect
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error(`Gemini Image MCP Server running (model: ${config.model})`);
+  logger.info(`Gemini Image MCP Server running`, { model: config.model, transport: "stdio" });
 }
 
 // Run the server
 main().catch((error: unknown) => {
-  console.error("Server error:", error);
+  logger.error("Fatal server error — shutting down", fmtError(error));
   process.exit(1);
 });
